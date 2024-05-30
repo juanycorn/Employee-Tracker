@@ -51,4 +51,3 @@ Follow the prompts to perform various actions such as viewing departments, roles
 - Node.js
 - MySQL
 - Inquirer.js
-- console.table
