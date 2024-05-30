@@ -1,6 +1,5 @@
 import inquirer from 'inquirer';
 import { connectToDatabase } from './db/index.mjs';
-import consoleTable from 'console.table';
 
 // Start the application
 async function startApp() {
