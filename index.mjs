@@ -1,11 +1,12 @@
 import inquirer from 'inquirer';
-import { connectToDatabase } from './db/index.mjs';
+import { connectToDatabase, executeQuery } from './db/index.mjs';
+
+let db; // Global variable to store the database connection
 
 // Start the application
 async function startApp() {
   try {
-    const db = await connectToDatabase();
-    console.log('Connected to the database.');
+    db = await connectToDatabase();
     runApp();
   } catch (error) {
     console.error('Error starting the application:', error.message);
@@ -62,7 +63,7 @@ function runApp() {
 // View all departments
 async function viewDepartments() {
   const sql = 'SELECT * FROM departments';
-  const departments = await executeQuery(sql);
+  const departments = await executeQuery(db, sql);
   console.table(departments);
   runApp(); // Restart the application after viewing departments
 }
@@ -74,7 +75,7 @@ async function viewRoles() {
     FROM roles
     LEFT JOIN departments ON roles.department_id = departments.id
   `;
-  const roles = await executeQuery(sql);
+  const roles = await executeQuery(db, sql);
   console.table(roles);
   runApp(); // Restart the application after viewing roles
 }
@@ -88,7 +89,7 @@ async function viewEmployees() {
     LEFT JOIN departments ON roles.department_id = departments.id
     LEFT JOIN employees manager ON manager.id = employees.manager_id
   `;
-  const employees = await executeQuery(sql);
+  const employees = await executeQuery(db, sql);
   console.table(employees);
   runApp(); // Restart the application after viewing employees
 }
@@ -100,15 +101,15 @@ async function addDepartment() {
     type: 'input',
     message: 'Enter the name of the department:'
   });
-  const sql = 'INSERT INTO departments SET ?';
-  await executeQuery(sql, { name: answer.name });
+  const sql = 'INSERT INTO departments (name) VALUES (?)';
+  await executeQuery(db, sql, [answer.name]);
   console.log(`Department ${answer.name} added!`);
   runApp(); // Restart the application after adding a department
 }
 
 // Add a role
 async function addRole() {
-  const departments = await executeQuery('SELECT * FROM departments');
+  const departments = await executeQuery(db, 'SELECT * FROM departments');
   const answers = await inquirer.prompt([
     {
       name: 'title',
@@ -130,20 +131,16 @@ async function addRole() {
       }))
     }
   ]);
-  const sql = 'INSERT INTO roles SET ?';
-  await executeQuery(sql, {
-    title: answers.title,
-    salary: answers.salary,
-    department_id: answers.department_id
-  });
+  const sql = 'INSERT INTO roles (title, salary, department_id) VALUES (?, ?, ?)';
+  await executeQuery(db, sql, [answers.title, answers.salary, answers.department_id]);
   console.log(`Role ${answers.title} added!`);
   runApp(); // Restart the application after adding a role
 }
 
 // Add an employee
 async function addEmployee() {
-  const roles = await executeQuery('SELECT * FROM roles');
-  const employees = await executeQuery('SELECT * FROM employees');
+  const roles = await executeQuery(db, 'SELECT * FROM roles');
+  const employees = await executeQuery(db, 'SELECT * FROM employees');
   const answers = await inquirer.prompt([
     {
       name: 'first_name',
@@ -176,21 +173,16 @@ async function addEmployee() {
       )
     }
   ]);
-  const sql = 'INSERT INTO employees SET ?';
-  await executeQuery(sql, {
-    first_name: answers.first_name,
-    last_name: answers.last_name,
-    role_id: answers.role_id,
-    manager_id: answers.manager_id
-  });
+  const sql = 'INSERT INTO employees (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)';
+  await executeQuery(db, sql, [answers.first_name, answers.last_name, answers.role_id, answers.manager_id]);
   console.log(`Employee ${answers.first_name} ${answers.last_name} added!`);
   runApp(); // Restart the application after adding an employee
 }
 
 // Update an employee role
 async function updateEmployeeRole() {
-  const employees = await executeQuery('SELECT * FROM employees');
-  const roles = await executeQuery('SELECT * FROM roles');
+  const employees = await executeQuery(db, 'SELECT * FROM employees');
+  const roles = await executeQuery(db, 'SELECT * FROM roles');
   const answers = await inquirer.prompt([
     {
       name: 'employee_id',
@@ -211,21 +203,10 @@ async function updateEmployeeRole() {
       }))
     }
   ]);
-  const sql = 'UPDATE employees SET ? WHERE ?';
-  await executeQuery(sql, [{ role_id: answers.role_id }, { id: answers.employee_id }]);
-  console.log(`Employee role updated!`);
+  const sql = 'UPDATE employees SET role_id = ? WHERE id = ?';
+  await executeQuery(db, sql, [answers.role_id, answers.employee_id]);
+  console.log('Employee role updated!');
   runApp(); // Restart the application after updating an employee role
-}
-
-// Function to execute a query
-async function executeQuery(sql, params) {
-  try {
-    const [results] = await db.execute(sql, params);
-    return results;
-  } catch (error) {
-    console.error('Error executing query:', error.message);
-    throw error;
-  }
 }
 
 // Call the startApp function to begin the application
